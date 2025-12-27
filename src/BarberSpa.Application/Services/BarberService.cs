@@ -5,6 +5,7 @@ using BarberSpa.Domain.Entities;
 using BarberSpa.Domain.Exceptions;
 using BarberSpa.Domain.Ports.Out;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace BarberSpa.Application.Services
@@ -22,7 +23,6 @@ namespace BarberSpa.Application.Services
 
         public async Task<IEnumerable<BarberDto>> GetAllAsync()
         {
-            // Usamos el metodo GetActiveAsync que ya tenías en el repositorio
             var barbers = await _unitOfWork.Barbers.GetActiveAsync();
             return _mapper.Map<IEnumerable<BarberDto>>(barbers);
         }
@@ -50,7 +50,7 @@ namespace BarberSpa.Application.Services
             var barber = await _unitOfWork.Barbers.GetByIdAsync(id);
             if (barber == null) throw new NotFoundException("Barbero", id);
 
-            // Actualizacion manual de campos
+            // Actualizamos campos
             barber.Name = dto.Name;
             barber.Specialty = dto.Specialty;
             barber.Email = dto.Email;
@@ -65,7 +65,14 @@ namespace BarberSpa.Application.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
-            // Borrado fisico
+            // Verificamos si el barbero tiene citas agendadas antes de borrarlo.
+            var appointments = await _unitOfWork.Appointments.GetByBarberIdAsync(id);
+            if (appointments != null && appointments.Any())
+            {
+                throw new BusinessRuleException("Conflict", "No se puede eliminar el barbero porque tiene citas asociadas.");
+            }
+
+            // BORRADO FÍSICO
             var result = await _unitOfWork.Barbers.DeleteAsync(id);
             if (!result) throw new NotFoundException("Barbero", id);
 

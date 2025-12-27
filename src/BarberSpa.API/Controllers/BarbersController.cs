@@ -1,13 +1,15 @@
 ﻿using BarberSpa.Application.DTOs.Barber;
 using BarberSpa.Application.Interfaces;
+using BarberSpa.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace BarberSpa.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
     public class BarbersController : ControllerBase
     {
         private readonly IBarberService _barberService;
@@ -33,23 +35,26 @@ namespace BarberSpa.API.Controllers
             return Ok(await _barberService.GetByIdAsync(id));
         }
 
-        // POST: solo logueados
+        // POST: Solo Admin puede crear barberos
         [HttpPost]
+        [Authorize(Roles = Roles.Admin)]
         public async Task<ActionResult<BarberDto>> Create(CreateBarberDto dto)
         {
             var created = await _barberService.CreateAsync(dto);
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
-        // PUT: solo logueados
+        // PUT: Solo Admin puede editar
         [HttpPut("{id}")]
+        [Authorize(Roles = Roles.Admin)]
         public async Task<ActionResult<BarberDto>> Update(int id, CreateBarberDto dto)
         {
             return Ok(await _barberService.UpdateAsync(id, dto));
         }
 
-        // DELETE: solo logueados
+        // DELETE: Solo Admin puede borrar, eliminacion fisica
         [HttpDelete("{id}")]
+        [Authorize(Roles = Roles.Admin)]
         public async Task<IActionResult> Delete(int id)
         {
             await _barberService.DeleteAsync(id);

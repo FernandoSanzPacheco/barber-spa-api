@@ -4,6 +4,8 @@ using BarberSpa.Application.Interfaces;
 using BarberSpa.Domain.Entities;
 using BarberSpa.Domain.Exceptions;
 using BarberSpa.Domain.Ports.Out;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace BarberSpa.Application.Services
@@ -21,10 +23,10 @@ namespace BarberSpa.Application.Services
 
         public async Task<IEnumerable<ServiceDto>> GetAllAsync()
         {
-            // usamos GetActiveAsync para traer solo los servicios disponibles
             var services = await _unitOfWork.Services.GetActiveAsync();
             return _mapper.Map<IEnumerable<ServiceDto>>(services);
         }
+
         public async Task<ServiceDto> GetByIdAsync(int id)
         {
             var service = await _unitOfWork.Services.GetByIdAsync(id);
@@ -35,7 +37,7 @@ namespace BarberSpa.Application.Services
         public async Task<ServiceDto> CreateAsync(CreateServiceDto dto)
         {
             var service = _mapper.Map<Service>(dto);
-            service.IsActive = true; // Por defecto activo al crear
+            service.IsActive = true;
 
             await _unitOfWork.Services.CreateAsync(service);
             await _unitOfWork.SaveChangesAsync();
@@ -48,7 +50,6 @@ namespace BarberSpa.Application.Services
             var service = await _unitOfWork.Services.GetByIdAsync(id);
             if (service == null) throw new NotFoundException("Servicio", id);
 
-            // Actualizamos campos manualmente o usando Mapper
             service.Name = dto.Name;
             service.Description = dto.Description;
             service.Price = dto.Price;
@@ -63,7 +64,16 @@ namespace BarberSpa.Application.Services
 
         public async Task<bool> DeleteAsync(int id)
         {
-            // Para borrado logico, cambiaríamos IsActive = false.
+            // VALIDACION DE INTEGRIDAD
+            // Verificamos si hay citas que usen este servicio usando el nuevo método del repositorio.
+            var appointments = await _unitOfWork.Appointments.GetByServiceIdAsync(id);
+
+            if (appointments != null && appointments.Any())
+            {
+                throw new BusinessRuleException("Conflict", "No se puede eliminar el servicio porque hay citas que dependen de él.");
+            }
+
+            // BORRADO FISICO
             var deleted = await _unitOfWork.Services.DeleteAsync(id);
             if (!deleted) throw new NotFoundException("Servicio", id);
 
